@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CODM Live VOD Logger</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles/main.css">
+  <link rel="icon" href="data:,">
+</head>
+<body>
+  <div id="topbar">
+    <div class="tb-group">
+      <span class="tb-label">YT Link</span>
+      <input type="url" id="yt-url" placeholder="Paste unlisted YouTube link...">
+      <button class="btn btn-cyan" id="load-video-btn">Load</button>
+    </div>
+    <div class="tb-group">
+      <span class="tb-label">Match ID</span>
+      <input type="text" id="match-id-input" placeholder="M0010">
+    </div>
+    <div class="tb-group">
+      <span class="tb-label">Team</span>
+      <input type="text" id="team-input" value="Rival">
+    </div>
+    <div class="tb-group">
+      <span class="tb-label">Opponent</span>
+      <input type="text" id="opp-input" placeholder="Opponent">
+    </div>
+    <div class="tb-group">
+      <span class="tb-label">HP Hill Cycle</span>
+      <select id="hill-cycle-select">
+        <option value="5">5-hill (Arsenal)</option>
+        <option value="4">4-hill (Standard)</option>
+      </select>
+    </div>
+    <div style="flex:1"></div>
+    <span id="roster-toggle">Roster ▾</span>
+    <button class="btn btn-ghost" id="new-match-btn">New Match</button>
+
+    <div id="warn-banner"></div>
+
+    <div id="roster-panel">
+      <div class="field"><label>Player 1</label><input type="text" class="roster-input" data-i="0"></div>
+      <div class="field"><label>Player 2</label><input type="text" class="roster-input" data-i="1"></div>
+      <div class="field"><label>Player 3</label><input type="text" class="roster-input" data-i="2"></div>
+      <div class="field"><label>Player 4</label><input type="text" class="roster-input" data-i="3"></div>
+      <div class="field"><label>Player 5</label><input type="text" class="roster-input" data-i="4"></div>
+    </div>
+  </div>
+
+  <div id="file-origin-banner">
+    <strong>⚠ This page can't run from a double-clicked file.</strong> With this modular version, browsers block ES modules AND YouTube embeds from file:// pages entirely — the app will not load at all this way.<br>
+    1. Open a terminal in this project folder<br>
+    2. Run: <code>python -m http.server 8080</code><br>
+    3. Open <code>http://localhost:8080/index.html</code> in your browser<br>
+    <span style="color:var(--text-dim);font-size:12px;">Keep the terminal open while using the tool. Ctrl+C to stop it when done.</span>
+  </div>
+
+  <div id="main">
+    <div id="video-pane">
+      <div id="video-wrap">
+        <div id="video-placeholder">Paste an unlisted YouTube link above and click Load.</div>
+        <div id="yt-player"></div>
+      </div>
+    </div>
+
+    <div id="panel-pane">
+      <div class="tabs">
+        <button class="tab-btn active" data-mode="hp">Hardpoint</button>
+        <button class="tab-btn" data-mode="snd">Search &amp; Destroy</button>
+        <button class="tab-btn" data-mode="control">Control</button>
+      </div>
+
+      <div class="mode-panel active" id="hp-panel">
+        <div class="field-row">
+          <div class="field"><label>Hill #</label><div class="panel-readout" id="hp-hillnum">1</div></div>
+          <div class="field"><label>Hill Score Us</label><input type="number" id="hp-score-us" min="0" max="60"></div>
+          <div class="field"><label>Hill Score Opp</label><input type="number" id="hp-score-opp" min="0" max="60"></div>
+        </div>
+        <div class="field-row"><div class="field"><label>Notes (optional)</label><textarea id="hp-notes" rows="1"></textarea></div></div>
+        <div class="save-row"><button class="btn btn-green" id="hp-save-btn">Save Hill</button></div>
+      </div>
+
+      <div class="mode-panel" id="snd-panel">
+        <div class="field-row">
+          <div class="field"><label>Round #</label><div class="panel-readout" id="snd-roundnum">1</div></div>
+          <div class="field"><label>Side Us</label><select id="snd-side"><option value="Attack">Attack</option><option value="Defense">Defense</option></select></div>
+          <div class="field"><label>Site</label><select id="snd-site"><option value="N/A">N/A</option><option value="A">A</option><option value="B">B</option></select></div>
+          <div class="field"><label>Plant?</label><select id="snd-plant"><option value="N">N</option><option value="Y">Y</option></select></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>First Blood Side</label><select id="snd-fbside"><option value="Us">Us</option><option value="Opp">Opp</option></select></div>
+          <div class="field"><label>First Blood Player</label><select id="snd-fbplayer"></select></div>
+          <div class="field" id="snd-fbplayer-manual-wrap" style="display:none;"><label>Player Name</label><input type="text" id="snd-fbplayer-manual"></div>
+          <div class="field"><label>OT Round?</label><select id="snd-ot"><option value="N">N</option><option value="Y">Y</option></select></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Result / Method</label><select id="snd-method"><option value="elim_us_win">Elimination (Us win)</option><option value="elim_opp_win">Elimination (Opp win)</option><option value="elim_us_diffuse">Elim Us – Opp Diffuses</option><option value="elim_opp_diffuse">Elim Opp – Us Diffuses</option><option value="detonated">Bomb Detonated</option><option value="time_expired">Time Expired</option><option value="manual">Manual entry...</option></select></div>
+          <div class="field" id="snd-manual-result-wrap" style="display:none;"><label>Manual Result</label><select id="snd-manual-result"><option value="Win">Win</option><option value="Loss">Loss</option></select></div>
+          <div class="field" id="snd-manual-method-wrap" style="display:none;"><label>Manual Method Note</label><input type="text" id="snd-manual-method"></div>
+        </div>
+        <div class="field-row"><div class="field"><label>Notes (optional)</label><textarea id="snd-notes" rows="1"></textarea></div></div>
+        <div class="save-row"><button class="btn btn-green" id="snd-save-btn">Save Round (Enter)</button></div>
+      </div>
+
+      <div class="mode-panel" id="control-panel">
+        <div class="control-header-strip">
+          <div class="field-row">
+            <div class="field"><label>Round #</label><div class="panel-readout" id="ctrl-roundnum">1</div></div>
+            <div class="field"><label>Side Us</label><select id="ctrl-side"><option value="Offense">Offense</option><option value="Defense">Defense</option></select></div>
+            <div class="field"><label>Result</label><select id="ctrl-result"><option value="Win">Win</option><option value="Loss">Loss</option></select></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Final Lives Us</label><input type="number" id="ctrl-lives-us" min="0"></div>
+            <div class="field"><label>Final Lives Opp</label><input type="number" id="ctrl-lives-opp" min="0"></div>
+            <div class="field"><label>Notes (optional)</label><input type="text" id="ctrl-notes"></div>
+          </div>
+        </div>
+
+        <div class="capture-bars">
+          <div class="capture-bar-row"><div class="capture-bar-label A">A</div><div class="capture-bar-track" id="ctrl-bar-A"></div><div class="capture-bar-time" id="ctrl-time-A">0s</div></div>
+          <div class="capture-bar-row"><div class="capture-bar-label B">B</div><div class="capture-bar-track" id="ctrl-bar-B"></div><div class="capture-bar-time" id="ctrl-time-B">0s</div></div>
+        </div>
+
+        <div class="event-buttons">
+          <button class="btn btn-S" id="ctrl-btn-S">S<span class="key-hint">Round Start</span></button>
+          <button class="btn btn-A" id="ctrl-btn-A">A<span class="key-hint">Site A Streak</span></button>
+          <button class="btn btn-B" id="ctrl-btn-B">B<span class="key-hint">Site B Streak</span></button>
+          <div id="allout-wrap">
+            <button class="btn btn-red" id="ctrl-btn-allout" style="width:100%;height:100%;">All Out<span class="key-hint">Choose site</span></button>
+            <div id="allout-menu">
+              <button data-site="A">A</button>
+              <button data-site="B">B</button>
+              <button data-site="N/A">N/A</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="mini-log" id="ctrl-mini-log"><div class="mini-log-empty">No events yet this round. Press S when the round starts.</div></div>
+        <div class="save-row"><button class="btn btn-green" id="ctrl-save-btn">Save Round</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="verify-box">
+    <div id="verify-toolbar">
+      <span id="verify-title">Hardpoint Log</span>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-sm btn-cyan" id="export-current-btn">Export CSV</button>
+        <button class="btn btn-sm btn-cyan" id="export-all-btn">Export All (3 files)</button>
+      </div>
+    </div>
+    <div id="verify-scroll"></div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // Plain classic script (not type=module) — runs even when the browser
+    // blocks ES module loading from file://, which is exactly the case
+    // this needs to detect and explain.
+    if (location.protocol === 'file:') {
+      document.addEventListener('DOMContentLoaded', function(){
+        document.getElementById('file-origin-banner').classList.add('show');
+      });
+    }
+  </script>
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>

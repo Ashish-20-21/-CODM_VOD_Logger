@@ -1,0 +1,1435 @@
+/** Original version 1 from which we created the version 1.1 (MOnolithic to modular)*/
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CODM Live VOD Logger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0B0D12;
+    --panel:#141821;
+    --panel-2:#1B202C;
+    --panel-3:#10131A;
+    --border:#262C3A;
+    --border-soft:#1E2330;
+    --text:#E6E8EC;
+    --text-dim:#8A93A6;
+    --text-faint:#5A6275;
+    --amber:#F2A93B;
+    --amber-dim:#7A5A22;
+    --cyan:#4FD1C5;
+    --cyan-dim:#235953;
+    --green:#34D399;
+    --green-dim:#185C42;
+    --red:#EF4444;
+    --red-dim:#5C2323;
+    --font-ui:'Inter',sans-serif;
+    --font-mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;background:var(--bg);color:var(--text);font-family:var(--font-ui);}
+  body{display:flex;flex-direction:column;height:100vh;overflow:hidden;font-size:14px;}
+
+  /* ---------- TOP BAR ---------- */
+  #topbar{
+    background:var(--panel-3);
+    border-bottom:1px solid var(--border);
+    padding:10px 16px;
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:10px 18px;
+    flex-shrink:0;
+  }
+  .tb-group{display:flex;align-items:center;gap:6px;}
+  .tb-label{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-faint);font-weight:600;}
+  #topbar input[type=text], #topbar input[type=url], #topbar select{
+    background:var(--panel-2);
+    border:1px solid var(--border);
+    color:var(--text);
+    border-radius:4px;
+    padding:5px 8px;
+    font-family:var(--font-ui);
+    font-size:13px;
+  }
+  #yt-url{width:280px;}
+  #match-id-input{width:80px;}
+  #team-input, #opp-input{width:100px;}
+  .btn{
+    background:var(--panel-2);
+    border:1px solid var(--border);
+    color:var(--text);
+    border-radius:4px;
+    padding:6px 12px;
+    font-family:var(--font-ui);
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+    transition:filter .12s, transform .04s;
+  }
+  .btn:hover{filter:brightness(1.25);}
+  .btn:active{transform:scale(.97);}
+  .btn-amber{background:var(--amber-dim);border-color:var(--amber);color:#FFE3B0;}
+  .btn-green{background:var(--green-dim);border-color:var(--green);color:#C8FCE6;}
+  .btn-red{background:var(--red-dim);border-color:var(--red);color:#FFD1D1;}
+  .btn-cyan{background:var(--cyan-dim);border-color:var(--cyan);color:#D2FBF6;}
+  .btn-ghost{background:transparent;border-color:var(--border-soft);color:var(--text-dim);}
+  .btn:disabled{opacity:.35;cursor:not-allowed;filter:none;}
+  .btn-sm{padding:3px 8px;font-size:11px;}
+  #roster-toggle{cursor:pointer;color:var(--cyan);font-size:12px;font-weight:600;user-select:none;}
+  #roster-panel{
+    display:none;
+    width:100%;
+    padding-top:8px;
+    border-top:1px solid var(--border-soft);
+    margin-top:6px;
+    gap:8px;
+  }
+  #roster-panel.open{display:grid;grid-template-columns:repeat(5,1fr);}
+  #roster-panel .field{min-width:0;}
+  #roster-panel input{width:100%;}
+  #warn-banner{
+    width:100%;
+    font-size:12px;
+    color:var(--amber);
+    background:var(--amber-dim);
+    border-radius:4px;
+    padding:5px 10px;
+    display:none;
+  }
+  #warn-banner.show{display:block;}
+  #file-origin-banner{
+    width:100%;
+    background:#1a1200;
+    border:1px solid var(--amber);
+    border-radius:6px;
+    padding:10px 14px;
+    display:none;
+    font-size:13px;
+    line-height:1.6;
+    color:var(--text);
+  }
+  #file-origin-banner.show{display:block;}
+  #file-origin-banner strong{color:var(--amber);}
+  #file-origin-banner code{
+    background:var(--panel-2);
+    border:1px solid var(--border);
+    border-radius:3px;
+    padding:2px 7px;
+    font-family:var(--font-mono);
+    font-size:12px;
+    color:var(--cyan);
+    user-select:all;
+  }
+
+  /* ---------- MAIN SPLIT ---------- */
+  #main{display:flex;flex:1;min-height:0;}
+  #video-pane{
+    width:60%;
+    background:#000;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-right:1px solid var(--border);
+    position:relative;
+  }
+  #video-wrap{width:100%;max-width:980px;aspect-ratio:16/9;background:#000;}
+  #yt-player{width:100%;height:100%;}
+  #video-placeholder{color:var(--text-faint);font-size:13px;text-align:center;padding:20px;}
+
+  #panel-pane{width:40%;display:flex;flex-direction:column;min-height:0;}
+  .tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;}
+  .tab-btn{
+    flex:1;
+    background:var(--panel-3);
+    border:none;
+    border-right:1px solid var(--border);
+    color:var(--text-dim);
+    padding:11px 6px;
+    font-family:var(--font-ui);
+    font-size:12.5px;
+    font-weight:700;
+    letter-spacing:.03em;
+    text-transform:uppercase;
+    cursor:pointer;
+  }
+  .tab-btn:last-child{border-right:none;}
+  .tab-btn.active{background:var(--panel);color:var(--amber);box-shadow:inset 0 -2px 0 var(--amber);}
+
+  .mode-panel{flex:1;overflow-y:auto;padding:14px;display:none;}
+  .mode-panel.active{display:block;}
+
+  .field-row{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+  .field{display:flex;flex-direction:column;gap:4px;flex:1;min-width:90px;}
+  .field label{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint);font-weight:600;}
+  .field input, .field select, .field textarea{
+    background:var(--panel-2);
+    border:1px solid var(--border);
+    color:var(--text);
+    border-radius:4px;
+    padding:7px 8px;
+    font-family:var(--font-ui);
+    font-size:13px;
+    width:100%;
+  }
+  .field textarea{resize:vertical;min-height:36px;font-family:var(--font-ui);}
+  .field input:focus, .field select:focus, .field textarea:focus{outline:1px solid var(--cyan);}
+
+  .panel-readout{
+    font-family:var(--font-mono);
+    font-size:13px;
+    color:var(--cyan);
+    background:var(--panel-2);
+    border:1px solid var(--border);
+    border-radius:4px;
+    padding:7px 8px;
+    text-align:center;
+  }
+
+  .save-row{margin-top:6px;}
+  .save-row .btn{width:100%;padding:10px;font-size:13.5px;}
+
+  hr.sep{border:none;border-top:1px solid var(--border-soft);margin:14px 0;}
+
+  /* ---------- CONTROL MODE SPECIFIC ---------- */
+  .control-header-strip{
+    background:var(--panel-2);
+    border:1px solid var(--border);
+    border-radius:6px;
+    padding:10px;
+    margin-bottom:12px;
+  }
+  .control-header-strip .field-row:last-child{margin-bottom:0;}
+
+  .capture-bars{display:flex;flex-direction:column;gap:10px;margin-bottom:14px;}
+  .capture-bar-row{display:flex;align-items:center;gap:10px;}
+  .capture-bar-label{
+    width:26px;font-family:var(--font-mono);font-weight:700;font-size:16px;text-align:center;
+  }
+  .capture-bar-label.A{color:var(--amber);}
+  .capture-bar-label.B{color:var(--cyan);}
+  .capture-bar-track{
+    flex:1;height:18px;background:var(--panel-3);border:1px solid var(--border);
+    border-radius:3px;overflow:hidden;display:flex;
+  }
+  .capture-bar-seg{
+    flex:1;border-right:1px solid var(--bg);transition:background .15s;
+  }
+  .capture-bar-seg:last-child{border-right:none;}
+  .capture-bar-seg.filled.A{background:var(--amber);}
+  .capture-bar-seg.filled.B{background:var(--cyan);}
+  .capture-bar-time{
+    width:62px;font-family:var(--font-mono);font-size:12.5px;color:var(--text-dim);text-align:right;
+  }
+
+  .event-buttons{display:flex;gap:8px;margin-bottom:6px;}
+  .event-buttons .btn{flex:1;font-size:15px;font-family:var(--font-mono);padding:14px 6px;font-weight:700;}
+  .btn-S{background:var(--panel-2);border-color:var(--text-faint);color:var(--text);}
+  .btn-A{background:var(--amber-dim);border-color:var(--amber);color:#FFE3B0;}
+  .btn-B{background:var(--cyan-dim);border-color:var(--cyan);color:#D2FBF6;}
+  .key-hint{font-size:9px;display:block;opacity:.7;font-weight:400;margin-top:2px;}
+
+  #allout-wrap{position:relative;flex:1;}
+  #allout-menu{
+    display:none;position:absolute;bottom:100%;left:0;right:0;margin-bottom:4px;
+    background:var(--panel-2);border:1px solid var(--red);border-radius:4px;overflow:hidden;z-index:5;
+  }
+  #allout-menu.open{display:flex;}
+  #allout-menu button{flex:1;background:transparent;border:none;border-right:1px solid var(--border);color:var(--text);padding:8px 4px;font-size:12px;cursor:pointer;font-family:var(--font-mono);}
+  #allout-menu button:last-child{border-right:none;}
+  #allout-menu button:hover{background:var(--red-dim);}
+
+  .mini-log{
+    margin-top:10px;
+    background:var(--panel-3);
+    border:1px solid var(--border-soft);
+    border-radius:4px;
+    max-height:140px;
+    overflow-y:auto;
+    font-family:var(--font-mono);
+    font-size:12px;
+  }
+  .mini-log-row{display:flex;justify-content:space-between;padding:4px 8px;border-bottom:1px solid var(--border-soft);}
+  .mini-log-row:last-child{border-bottom:none;}
+  .mini-log-empty{padding:10px;color:var(--text-faint);text-align:center;font-family:var(--font-ui);font-size:12px;}
+  .tag{display:inline-block;padding:1px 6px;border-radius:3px;font-size:10.5px;font-weight:700;margin-right:6px;}
+  .tag.A{background:var(--amber-dim);color:var(--amber);}
+  .tag.B{background:var(--cyan-dim);color:var(--cyan);}
+  .tag.S{background:var(--panel-2);color:var(--text-dim);}
+  .tag.allout{background:var(--red-dim);color:var(--red);}
+
+  /* ---------- VERIFY BOX ---------- */
+  #verify-box{
+    height:230px;
+    flex-shrink:0;
+    border-top:1px solid var(--border);
+    background:var(--panel-3);
+    display:flex;
+    flex-direction:column;
+    min-height:0;
+  }
+  #verify-toolbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:6px 12px;
+    border-bottom:1px solid var(--border-soft);
+    flex-shrink:0;
+  }
+  #verify-title{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-faint);font-weight:700;}
+  #verify-scroll{flex:1;overflow:auto;}
+  table.vt{width:100%;border-collapse:collapse;font-size:12px;font-family:var(--font-mono);}
+  table.vt th{
+    position:sticky;top:0;background:var(--panel-2);color:var(--text-dim);
+    text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);font-family:var(--font-ui);
+    font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;
+  }
+  table.vt td{padding:5px 8px;border-bottom:1px solid var(--border-soft);white-space:nowrap;color:var(--text);}
+  table.vt tr:hover td{background:var(--panel-2);}
+  table.vt input{
+    background:var(--panel);border:1px solid var(--cyan);color:var(--text);
+    border-radius:3px;padding:2px 4px;font-family:var(--font-mono);font-size:12px;width:70px;
+  }
+  .row-actions{display:flex;gap:4px;}
+  .icon-btn{
+    background:transparent;border:none;cursor:pointer;color:var(--text-faint);font-size:13px;padding:2px 4px;
+  }
+  .icon-btn:hover{color:var(--cyan);}
+  .icon-btn.danger:hover{color:var(--red);}
+  .expand-row{cursor:pointer;color:var(--cyan);font-family:var(--font-ui);font-weight:600;}
+  .sub-events td{background:var(--panel-3);padding:0 0 8px 24px;}
+  table.vt-sub{width:calc(100% - 24px);border-collapse:collapse;font-size:11.5px;}
+  table.vt-sub th{background:var(--panel);color:var(--text-faint);padding:3px 6px;text-align:left;font-family:var(--font-ui);font-size:9.5px;text-transform:uppercase;}
+  table.vt-sub td{padding:3px 6px;border-bottom:1px solid var(--border-soft);}
+  .empty-state{padding:20px;text-align:center;color:var(--text-faint);font-family:var(--font-ui);font-size:12.5px;}
+
+  ::-webkit-scrollbar{width:9px;height:9px;}
+  ::-webkit-scrollbar-track{background:var(--panel-3);}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:5px;}
+  ::-webkit-scrollbar-thumb:hover{background:var(--text-faint);}
+
+  .toast{
+    position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:var(--panel-2);border:1px solid var(--green);color:var(--green);
+    padding:8px 18px;border-radius:6px;font-size:13px;font-weight:600;
+    opacity:0;transition:opacity .2s, transform .2s;pointer-events:none;z-index:100;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div class="tb-group">
+    <span class="tb-label">YT Link</span>
+    <input type="url" id="yt-url" placeholder="Paste unlisted YouTube link...">
+    <button class="btn btn-cyan" id="load-video-btn">Load</button>
+  </div>
+  <div class="tb-group">
+    <span class="tb-label">Match ID</span>
+    <input type="text" id="match-id-input" placeholder="M0010">
+  </div>
+  <div class="tb-group">
+    <span class="tb-label">Team</span>
+    <input type="text" id="team-input" value="Rival">
+  </div>
+  <div class="tb-group">
+    <span class="tb-label">Opponent</span>
+    <input type="text" id="opp-input" placeholder="Opponent">
+  </div>
+  <div class="tb-group">
+    <span class="tb-label">HP Hill Cycle</span>
+    <select id="hill-cycle-select">
+      <option value="5">5-hill (Arsenal)</option>
+      <option value="4">4-hill (Standard)</option>
+    </select>
+  </div>
+  <div style="flex:1"></div>
+  <span id="roster-toggle">Roster ▾</span>
+  <button class="btn btn-ghost" id="new-match-btn">New Match</button>
+
+  <div id="warn-banner"></div>
+
+  <div id="roster-panel">
+    <div class="field"><label>Player 1</label><input type="text" class="roster-input" data-i="0"></div>
+    <div class="field"><label>Player 2</label><input type="text" class="roster-input" data-i="1"></div>
+    <div class="field"><label>Player 3</label><input type="text" class="roster-input" data-i="2"></div>
+    <div class="field"><label>Player 4</label><input type="text" class="roster-input" data-i="3"></div>
+    <div class="field"><label>Player 5</label><input type="text" class="roster-input" data-i="4"></div>
+  </div>
+</div>
+
+<div id="file-origin-banner">
+  <strong>⚠ YouTube videos cannot load from a file:// URL.</strong> Run a local server first:<br>
+  1. Open a terminal in the folder containing this file<br>
+  2. Run: <code>python -m http.server 8080</code><br>
+  3. Open <code>http://localhost:8080/codm_vod_logger.html</code> in your browser<br>
+  <span style="color:var(--text-dim);font-size:12px;">Keep the terminal open while using the tool. Ctrl+C to stop it when done.</span>
+</div>
+
+<div id="main">
+  <div id="video-pane">
+    <div id="video-wrap">
+      <div id="video-placeholder">Paste an unlisted YouTube link above and click Load.</div>
+      <div id="yt-player"></div>
+    </div>
+  </div>
+
+  <div id="panel-pane">
+    <div class="tabs">
+      <button class="tab-btn active" data-mode="hp">Hardpoint</button>
+      <button class="tab-btn" data-mode="snd">Search &amp; Destroy</button>
+      <button class="tab-btn" data-mode="control">Control</button>
+    </div>
+
+    <!-- HARDPOINT PANEL -->
+    <div class="mode-panel active" id="hp-panel">
+      <div class="field-row">
+        <div class="field">
+          <label>Hill #</label>
+          <div class="panel-readout" id="hp-hillnum">1</div>
+        </div>
+        <div class="field">
+          <label>Hill Score Us</label>
+          <input type="number" id="hp-score-us" min="0" max="60">
+        </div>
+        <div class="field">
+          <label>Hill Score Opp</label>
+          <input type="number" id="hp-score-opp" min="0" max="60">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Notes (optional)</label>
+          <textarea id="hp-notes" rows="1"></textarea>
+        </div>
+      </div>
+      <div class="save-row">
+        <button class="btn btn-green" id="hp-save-btn">Save Hill</button>
+      </div>
+    </div>
+
+    <!-- SND PANEL -->
+    <div class="mode-panel" id="snd-panel">
+      <div class="field-row">
+        <div class="field">
+          <label>Round #</label>
+          <div class="panel-readout" id="snd-roundnum">1</div>
+        </div>
+        <div class="field">
+          <label>Side Us</label>
+          <select id="snd-side">
+            <option value="Attack">Attack</option>
+            <option value="Defense">Defense</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Site</label>
+          <select id="snd-site">
+            <option value="N/A">N/A</option>
+            <option value="A">A</option>
+            <option value="B">B</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Plant?</label>
+          <select id="snd-plant">
+            <option value="N">N</option>
+            <option value="Y">Y</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>First Blood Side</label>
+          <select id="snd-fbside">
+            <option value="Us">Us</option>
+            <option value="Opp">Opp</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>First Blood Player</label>
+          <select id="snd-fbplayer"></select>
+        </div>
+        <div class="field" id="snd-fbplayer-manual-wrap" style="display:none;">
+          <label>Player Name</label>
+          <input type="text" id="snd-fbplayer-manual">
+        </div>
+        <div class="field">
+          <label>OT Round?</label>
+          <select id="snd-ot">
+            <option value="N">N</option>
+            <option value="Y">Y</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Result / Method</label>
+          <select id="snd-method">
+            <option value="elim_us_win">Elimination (Us win)</option>
+            <option value="elim_opp_win">Elimination (Opp win)</option>
+            <option value="elim_us_diffuse">Elim Us – Opp Diffuses</option>
+            <option value="elim_opp_diffuse">Elim Opp – Us Diffuses</option>
+            <option value="detonated">Bomb Detonated</option>
+            <option value="time_expired">Time Expired</option>
+            <option value="manual">Manual entry...</option>
+          </select>
+        </div>
+        <div class="field" id="snd-manual-result-wrap" style="display:none;">
+          <label>Manual Result</label>
+          <select id="snd-manual-result">
+            <option value="Win">Win</option>
+            <option value="Loss">Loss</option>
+          </select>
+        </div>
+        <div class="field" id="snd-manual-method-wrap" style="display:none;">
+          <label>Manual Method Note</label>
+          <input type="text" id="snd-manual-method">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Notes (optional)</label>
+          <textarea id="snd-notes" rows="1"></textarea>
+        </div>
+      </div>
+      <div class="save-row">
+        <button class="btn btn-green" id="snd-save-btn">Save Round (Enter)</button>
+      </div>
+    </div>
+
+    <!-- CONTROL PANEL -->
+    <div class="mode-panel" id="control-panel">
+      <div class="control-header-strip">
+        <div class="field-row">
+          <div class="field">
+            <label>Round #</label>
+            <div class="panel-readout" id="ctrl-roundnum">1</div>
+          </div>
+          <div class="field">
+            <label>Side Us</label>
+            <select id="ctrl-side">
+              <option value="Offense">Offense</option>
+              <option value="Defense">Defense</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Result</label>
+            <select id="ctrl-result">
+              <option value="Win">Win</option>
+              <option value="Loss">Loss</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Final Lives Us</label>
+            <input type="number" id="ctrl-lives-us" min="0">
+          </div>
+          <div class="field">
+            <label>Final Lives Opp</label>
+            <input type="number" id="ctrl-lives-opp" min="0">
+          </div>
+          <div class="field">
+            <label>Notes (optional)</label>
+            <input type="text" id="ctrl-notes">
+          </div>
+        </div>
+      </div>
+
+      <div class="capture-bars">
+        <div class="capture-bar-row">
+          <div class="capture-bar-label A">A</div>
+          <div class="capture-bar-track" id="ctrl-bar-A"></div>
+          <div class="capture-bar-time" id="ctrl-time-A">0s</div>
+        </div>
+        <div class="capture-bar-row">
+          <div class="capture-bar-label B">B</div>
+          <div class="capture-bar-track" id="ctrl-bar-B"></div>
+          <div class="capture-bar-time" id="ctrl-time-B">0s</div>
+        </div>
+      </div>
+
+      <div class="event-buttons">
+        <button class="btn btn-S" id="ctrl-btn-S">S<span class="key-hint">Round Start</span></button>
+        <button class="btn btn-A" id="ctrl-btn-A">A<span class="key-hint">Site A Streak</span></button>
+        <button class="btn btn-B" id="ctrl-btn-B">B<span class="key-hint">Site B Streak</span></button>
+        <div id="allout-wrap">
+          <button class="btn btn-red" id="ctrl-btn-allout" style="width:100%;height:100%;">All Out<span class="key-hint">Choose site</span></button>
+          <div id="allout-menu">
+            <button data-site="A">A</button>
+            <button data-site="B">B</button>
+            <button data-site="N/A">N/A</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="mini-log" id="ctrl-mini-log">
+        <div class="mini-log-empty">No events yet this round. Press S when the round starts.</div>
+      </div>
+
+      <div class="save-row">
+        <button class="btn btn-green" id="ctrl-save-btn">Save Round</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="verify-box">
+  <div id="verify-toolbar">
+    <span id="verify-title">Hardpoint Log</span>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-sm btn-cyan" id="export-current-btn">Export CSV</button>
+      <button class="btn btn-sm btn-cyan" id="export-all-btn">Export All (3 files)</button>
+    </div>
+  </div>
+  <div id="verify-scroll"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://www.youtube.com/iframe_api"></script>
+<script>
+(function(){
+
+/* ============================================================
+   STATE
+   ============================================================ */
+const STORAGE_KEY = 'codm_vod_logger_state_v1';
+
+function defaultState(){
+  return {
+    matchId:'', team:'Rival', opponent:'', hillCycle:5,
+    roster:['','','','',''],
+    activeMode:'hp',
+    hp:{ rows:[] },          // raw rows: {hillNum, scoreUs, scoreOpp, notes}
+    snd:{ rows:[] },         // raw rows: full field set
+    control:{
+      roundNum:1,
+      sideUs:'Offense', result:'Win', livesUs:'', livesOpp:'', notes:'',
+      events:[],            // current in-progress round's raw events: {kind:'S'|'tap'|'allout', site, t}
+      rounds:[]             // saved rounds: {roundNum, sideUs, result, livesUs, livesOpp, notes, events:[...]}
+    }
+  };
+}
+
+let state = loadState();
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) return Object.assign(defaultState(), JSON.parse(raw));
+  }catch(e){ console.warn('Could not load saved state', e); }
+  return defaultState();
+}
+
+let saveTimer = null;
+function persist(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(()=>{
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+    catch(e){ console.warn('Could not save state', e); }
+  }, 150);
+}
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+function fmtTime(totalSeconds){
+  totalSeconds = Math.max(0, Math.round(totalSeconds));
+  const m = Math.floor(totalSeconds/60);
+  const s = totalSeconds%60;
+  return m+':'+String(s).padStart(2,'0');
+}
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(showToast._timer);
+  showToast._timer = setTimeout(()=>t.classList.remove('show'), 1600);
+}
+
+function csvEscape(val){
+  val = (val===undefined||val===null)? '' : String(val);
+  if(/[",\n]/.test(val)) return '"'+val.replace(/"/g,'""')+'"';
+  return val;
+}
+function rowsToCsv(headers, rows){
+  const lines = [headers.map(csvEscape).join(',')];
+  rows.forEach(r=> lines.push(r.map(csvEscape).join(',')));
+  return lines.join('\r\n');
+}
+function downloadCsv(filename, csvText){
+  const blob = new Blob([csvText], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* ============================================================
+   YOUTUBE PLAYER
+   ============================================================ */
+let ytPlayer = null;
+let ytReady = false;
+
+function parseYouTubeId(url){
+  if(!url) return null;
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=)([\w-]{11})/,
+    /(?:youtu\.be\/)([\w-]{11})/,
+    /(?:youtube\.com\/embed\/)([\w-]{11})/,
+    /(?:youtube\.com\/live\/)([\w-]{11})/
+  ];
+  for(const p of patterns){
+    const m = url.match(p);
+    if(m) return m[1];
+  }
+  if(/^[\w-]{11}$/.test(url.trim())) return url.trim();
+  return null;
+}
+
+window.onYouTubeIframeAPIReady = function(){
+  ytReady = true;
+};
+
+document.getElementById('load-video-btn').addEventListener('click', ()=>{
+  const url = document.getElementById('yt-url').value;
+  const id = parseYouTubeId(url);
+  if(!id){ showToast('Could not read a video ID from that link'); return; }
+  document.getElementById('video-placeholder').style.display = 'none';
+  if(!ytReady){
+    showToast('YouTube player still loading, try again in a second');
+    return;
+  }
+  if(!ytPlayer){
+    ytPlayer = new YT.Player('yt-player', {
+      videoId: id,
+      playerVars: { rel:0 },
+      events:{ onReady: ()=> showToast('Video loaded') }
+    });
+  } else {
+    ytPlayer.loadVideoById(id);
+    showToast('Video loaded');
+  }
+});
+
+function getVideoSeconds(){
+  if(ytPlayer && typeof ytPlayer.getCurrentTime === 'function'){
+    try{ return ytPlayer.getCurrentTime() || 0; }catch(e){ return 0; }
+  }
+  return 0;
+}
+
+/* ============================================================
+   TOP BAR: match setup / roster
+   ============================================================ */
+const matchIdInput = document.getElementById('match-id-input');
+const teamInput = document.getElementById('team-input');
+const oppInput = document.getElementById('opp-input');
+const hillCycleSelect = document.getElementById('hill-cycle-select');
+
+function initTopbar(){
+  matchIdInput.value = state.matchId;
+  teamInput.value = state.team;
+  oppInput.value = state.opponent;
+  hillCycleSelect.value = state.hillCycle;
+  document.querySelectorAll('.roster-input').forEach(inp=>{
+    inp.value = state.roster[+inp.dataset.i] || '';
+  });
+}
+matchIdInput.addEventListener('input', ()=>{ state.matchId = matchIdInput.value; persist(); checkWarn(); });
+teamInput.addEventListener('input', ()=>{ state.team = teamInput.value; persist(); });
+oppInput.addEventListener('input', ()=>{ state.opponent = oppInput.value; persist(); });
+hillCycleSelect.addEventListener('change', ()=>{ state.hillCycle = +hillCycleSelect.value; renderHP(); persist(); });
+
+document.querySelectorAll('.roster-input').forEach(inp=>{
+  inp.addEventListener('input', ()=>{
+    state.roster[+inp.dataset.i] = inp.value;
+    populateSndPlayerDropdown();
+    persist();
+  });
+});
+
+document.getElementById('roster-toggle').addEventListener('click', ()=>{
+  document.getElementById('roster-panel').classList.toggle('open');
+});
+
+function checkWarn(){
+  const banner = document.getElementById('warn-banner');
+  if(!state.matchId.trim()){
+    banner.textContent = 'No Match ID set — rows will still log, but fill this in before exporting.';
+    banner.classList.add('show');
+  } else {
+    banner.classList.remove('show');
+  }
+}
+
+document.getElementById('new-match-btn').addEventListener('click', ()=>{
+  if(!confirm('Start a new match? This clears all logged Hardpoint, S&D, and Control data currently in the tool (export CSVs first if you need them).')) return;
+  const keepRoster = state.roster.slice();
+  const keepTeam = state.team;
+  state = defaultState();
+  state.roster = keepRoster;
+  state.team = keepTeam;
+  initTopbar();
+  renderAll();
+  persist();
+  showToast('New match — all logs cleared');
+});
+
+/* ============================================================
+   TABS
+   ============================================================ */
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    state.activeMode = btn.dataset.mode;
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b===btn));
+    document.querySelectorAll('.mode-panel').forEach(p=>p.classList.remove('active'));
+    document.getElementById(btn.dataset.mode+'-panel').classList.add('active');
+    renderVerifyBox();
+    persist();
+  });
+});
+
+/* ============================================================
+   HARDPOINT
+   ============================================================ */
+function hpComputeRows(){
+  let cumUs=0, cumOpp=0;
+  return state.hp.rows.map(r=>{
+    const scoreUs = Number(r.scoreUs)||0;
+    const scoreOpp = Number(r.scoreOpp)||0;
+    cumUs += scoreUs; cumOpp += scoreOpp;
+    const timeWasted = Math.max(0, 60 - scoreUs - scoreOpp);
+    const heldPctUs = Math.round((scoreUs/60)*1000)/10;
+    return Object.assign({}, r, { cumUs, cumOpp, timeWasted, heldPctUs });
+  });
+}
+
+function currentHillNum(){
+  const n = state.hp.rows.length;
+  return (n % state.hillCycle) + 1;
+}
+
+function renderHP(){
+  document.getElementById('hp-hillnum').textContent = currentHillNum();
+}
+
+document.getElementById('hp-save-btn').addEventListener('click', ()=>{
+  const scoreUs = document.getElementById('hp-score-us').value;
+  const scoreOpp = document.getElementById('hp-score-opp').value;
+  if(scoreUs==='' || scoreOpp===''){ showToast('Enter both hill scores'); return; }
+  state.hp.rows.push({
+    hillNum: currentHillNum(),
+    scoreUs: Number(scoreUs),
+    scoreOpp: Number(scoreOpp),
+    notes: document.getElementById('hp-notes').value
+  });
+  document.getElementById('hp-score-us').value = '';
+  document.getElementById('hp-score-opp').value = '';
+  document.getElementById('hp-notes').value = '';
+  document.getElementById('hp-score-us').focus();
+  renderHP();
+  renderVerifyBox();
+  persist();
+  showToast('Hill '+state.hp.rows.length+' saved');
+});
+
+/* ============================================================
+   SND
+   ============================================================ */
+function populateSndPlayerDropdown(){
+  const sel = document.getElementById('snd-fbplayer');
+  const prev = sel.value;
+  sel.innerHTML = '';
+  state.roster.forEach((name, i)=>{
+    const label = name && name.trim() ? name : ('Player '+(i+1));
+    const opt = document.createElement('option');
+    opt.value = label; opt.textContent = label;
+    sel.appendChild(opt);
+  });
+  ['Oppo','Manual entry...'].forEach(label=>{
+    const opt = document.createElement('option');
+    opt.value = label==='Manual entry...' ? 'manual' : label;
+    opt.textContent = label;
+    sel.appendChild(opt);
+  });
+  if(prev) sel.value = prev;
+}
+document.getElementById('snd-fbplayer').addEventListener('change', (e)=>{
+  document.getElementById('snd-fbplayer-manual-wrap').style.display = (e.target.value==='manual') ? 'flex':'none';
+});
+document.getElementById('snd-method').addEventListener('change', (e)=>{
+  const isManual = e.target.value === 'manual';
+  document.getElementById('snd-manual-result-wrap').style.display = isManual ? 'flex':'none';
+  document.getElementById('snd-manual-method-wrap').style.display = isManual ? 'flex':'none';
+});
+
+function sndMethodLabel(v){
+  const map = {
+    elim_us_win:'Elimination (Us win)',
+    elim_opp_win:'Elimination (Opp win)',
+    elim_us_diffuse:'Elim Us – Opp Diffuses',
+    elim_opp_diffuse:'Elim Opp – Us Diffuses',
+    detonated:'Bomb Detonated',
+    time_expired:'Time Expired'
+  };
+  return map[v] || v;
+}
+
+// Derives round winner (Us/Opp) from method + side, per CODM S&D rules.
+function sndDeriveWinner(row){
+  switch(row.method){
+    case 'elim_us_win': return 'Us';
+    case 'elim_opp_win': return 'Opp';
+    case 'elim_us_diffuse': return 'Opp';   // we got eliminated, opp diffused
+    case 'elim_opp_diffuse': return 'Us';   // opp eliminated, we diffused
+    case 'detonated': return row.side==='Attack' ? 'Us' : 'Opp';
+    case 'time_expired': return row.side==='Defense' ? 'Us' : 'Opp'; // standard rule: no plant + time out = defense wins
+    case 'manual': return row.manualResult || 'Us';
+    default: return 'Us';
+  }
+}
+
+function sndComputeRows(){
+  let cumUs=0, cumOpp=0;
+  return state.snd.rows.map(r=>{
+    const winner = sndDeriveWinner(r);
+    if(winner==='Us') cumUs++; else cumOpp++;
+    return Object.assign({}, r, { cumUs, cumOpp, winner });
+  });
+}
+
+function renderSnd(){
+  document.getElementById('snd-roundnum').textContent = state.snd.rows.length + 1;
+}
+
+document.getElementById('snd-save-btn').addEventListener('click', saveSndRound);
+document.getElementById('snd-panel').addEventListener('keydown', (e)=>{
+  if(e.key==='Enter' && e.target.tagName!=='TEXTAREA'){
+    e.preventDefault();
+    saveSndRound();
+  }
+});
+
+function saveSndRound(){
+  const method = document.getElementById('snd-method').value;
+  let fbPlayer = document.getElementById('snd-fbplayer').value;
+  if(fbPlayer==='manual') fbPlayer = document.getElementById('snd-fbplayer-manual').value || 'Unknown';
+
+  const row = {
+    side: document.getElementById('snd-side').value,
+    site: document.getElementById('snd-site').value,
+    plant: document.getElementById('snd-plant').value,
+    fbSide: document.getElementById('snd-fbside').value,
+    fbPlayer: fbPlayer,
+    method: method,
+    methodLabel: method==='manual' ? (document.getElementById('snd-manual-method').value || 'Manual') : sndMethodLabel(method),
+    manualResult: method==='manual' ? document.getElementById('snd-manual-result').value : null,
+    ot: document.getElementById('snd-ot').value,
+    notes: document.getElementById('snd-notes').value
+  };
+  state.snd.rows.push(row);
+
+  // reset form to defaults but keep Side Us (commonly unchanged round-to-round)
+  document.getElementById('snd-site').value = 'N/A';
+  document.getElementById('snd-plant').value = 'N';
+  document.getElementById('snd-ot').value = 'N';
+  document.getElementById('snd-notes').value = '';
+  document.getElementById('snd-fbplayer-manual').value = '';
+  document.getElementById('snd-fbplayer-manual-wrap').style.display = 'none';
+  document.getElementById('snd-manual-result-wrap').style.display = 'none';
+  document.getElementById('snd-manual-method-wrap').style.display = 'none';
+  document.getElementById('snd-manual-method').value = '';
+
+  renderSnd();
+  renderVerifyBox();
+  persist();
+  showToast('Round '+state.snd.rows.length+' saved');
+}
+
+/* ============================================================
+   CONTROL
+   ============================================================ */
+// Replays a round's raw events to derive per-tap durations, totals, streak counts.
+// This is what makes editing/deleting a tap safe: everything downstream is recomputed.
+function controlComputeRound(events){
+  let baseline = null, aLast = null, bLast = null, aCount = 0, bCount = 0;
+  const taps = [];
+  events.forEach(ev=>{
+    if(ev.kind==='S'){
+      baseline = ev.t; aLast = ev.t; bLast = ev.t; aCount = 0; bCount = 0;
+    } else if(ev.kind==='tap'){
+      if(ev.site==='A'){
+        aCount++;
+        const duration = (aLast===null) ? null : ev.t - aLast;
+        aLast = ev.t;
+        taps.push({ site:'A', streakNum:aCount, t:ev.t, duration });
+      } else {
+        bCount++;
+        const duration = (bLast===null) ? null : ev.t - bLast;
+        bLast = ev.t;
+        taps.push({ site:'B', streakNum:bCount, t:ev.t, duration });
+      }
+    } else if(ev.kind==='allout'){
+      taps.push({ site:ev.site, streakNum:null, t:ev.t, duration:null, allout:true });
+    }
+  });
+  const totalA = taps.filter(t=>t.site==='A' && !t.allout).reduce((s,t)=>s+(t.duration||0),0);
+  const totalB = taps.filter(t=>t.site==='B' && !t.allout).reduce((s,t)=>s+(t.duration||0),0);
+  return { baseline, aCount, bCount, taps, totalA, totalB };
+}
+
+function ctrlCurrentComputed(){
+  return controlComputeRound(state.control.events);
+}
+
+function renderControlBars(){
+  const comp = ctrlCurrentComputed();
+  ['A','B'].forEach(site=>{
+    const track = document.getElementById('ctrl-bar-'+site);
+    track.innerHTML = '';
+    const count = site==='A' ? comp.aCount : comp.bCount;
+    for(let i=0;i<3;i++){
+      const seg = document.createElement('div');
+      seg.className = 'capture-bar-seg' + (i<count ? ' filled '+site : '');
+      track.appendChild(seg);
+    }
+    document.getElementById('ctrl-time-'+site).textContent =
+      Math.round(site==='A'?comp.totalA:comp.totalB)+'s';
+  });
+  document.getElementById('ctrl-btn-A').disabled = comp.aCount>=3;
+  document.getElementById('ctrl-btn-B').disabled = comp.bCount>=3;
+}
+
+function renderControlMiniLog(){
+  const wrap = document.getElementById('ctrl-mini-log');
+  if(state.control.events.length===0){
+    wrap.innerHTML = '<div class="mini-log-empty">No events yet this round. Press S when the round starts.</div>';
+    return;
+  }
+  const comp = ctrlCurrentComputed();
+  let html = '';
+  state.control.events.forEach((ev, idx)=>{
+    if(ev.kind==='S'){
+      html += '<div class="mini-log-row"><span><span class="tag S">S</span>Round start</span><span>'+fmtTime(ev.t)+'</span></div>';
+    } else if(ev.kind==='allout'){
+      html += '<div class="mini-log-row"><span><span class="tag allout">OUT</span>All Out — '+ev.site+'</span><span>'+fmtTime(ev.t)+'</span></div>';
+    } else {
+      const streakLabel = tapStreakNumFor(idx);
+      const dur = streakDurationFor(idx, comp);
+      html += '<div class="mini-log-row"><span><span class="tag '+ev.site+'">'+ev.site+'</span>Streak '+streakLabel+(dur!==null?' &mdash; '+Math.round(dur)+'s':'')+'</span><span>'+fmtTime(ev.t)+'</span></div>';
+    }
+  });
+  wrap.innerHTML = html;
+  wrap.scrollTop = wrap.scrollHeight;
+}
+// helper: figure out which streak number a given raw-event index corresponds to, by replaying up to it
+function tapStreakNumFor(idx){
+  let aCount=0,bCount=0;
+  for(let i=0;i<=idx;i++){
+    const ev = state.control.events[i];
+    if(ev.kind==='S'){ aCount=0; bCount=0; }
+    else if(ev.kind==='tap'){
+      if(ev.site==='A') aCount++; else bCount++;
+    }
+  }
+  const ev = state.control.events[idx];
+  return ev.site==='A' ? aCount : bCount;
+}
+function streakDurationFor(idx, comp){
+  const ev = state.control.events[idx];
+  if(ev.kind!=='tap') return null;
+  const streakNum = tapStreakNumFor(idx);
+  const match = comp.taps.find(t=>t.site===ev.site && t.streakNum===streakNum && t.t===ev.t);
+  return match ? match.duration : null;
+}
+
+function renderControlHeaderReadouts(){
+  document.getElementById('ctrl-roundnum').textContent = state.control.roundNum;
+}
+
+document.getElementById('ctrl-btn-S').addEventListener('click', ()=> ctrlLogEvent({kind:'S', t:getVideoSeconds()}));
+document.getElementById('ctrl-btn-A').addEventListener('click', ()=> ctrlTapSite('A'));
+document.getElementById('ctrl-btn-B').addEventListener('click', ()=> ctrlTapSite('B'));
+
+function ctrlTapSite(site){
+  const comp = ctrlCurrentComputed();
+  if(comp.baseline===null){ showToast('Press S first to mark round start'); return; }
+  const count = site==='A' ? comp.aCount : comp.bCount;
+  if(count>=3){ showToast('Site '+site+' already fully captured this round'); return; }
+  ctrlLogEvent({kind:'tap', site:site, t:getVideoSeconds()});
+}
+
+document.getElementById('ctrl-btn-allout').addEventListener('click', (e)=>{
+  document.getElementById('allout-menu').classList.toggle('open');
+});
+document.querySelectorAll('#allout-menu button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    ctrlLogEvent({kind:'allout', site:btn.dataset.site, t:getVideoSeconds()});
+    document.getElementById('allout-menu').classList.remove('open');
+  });
+});
+
+function ctrlLogEvent(ev){
+  state.control.events.push(ev);
+  renderControlBars();
+  renderControlMiniLog();
+  persist();
+}
+
+document.getElementById('ctrl-save-btn').addEventListener('click', ()=>{
+  if(state.control.events.length===0){
+    if(!confirm('No events logged this round. Save an empty round anyway?')) return;
+  }
+  state.control.rounds.push({
+    roundNum: state.control.roundNum,
+    sideUs: document.getElementById('ctrl-side').value,
+    result: document.getElementById('ctrl-result').value,
+    livesUs: document.getElementById('ctrl-lives-us').value,
+    livesOpp: document.getElementById('ctrl-lives-opp').value,
+    notes: document.getElementById('ctrl-notes').value,
+    events: state.control.events.slice()
+  });
+  state.control.roundNum++;
+  state.control.events = [];
+  document.getElementById('ctrl-lives-us').value = '';
+  document.getElementById('ctrl-lives-opp').value = '';
+  document.getElementById('ctrl-notes').value = '';
+  renderControlHeaderReadouts();
+  renderControlBars();
+  renderControlMiniLog();
+  renderVerifyBox();
+  persist();
+  showToast('Round '+(state.control.roundNum-1)+' saved');
+});
+
+/* ---- keyboard hotkeys for Control mode (S / A / B) ---- */
+document.addEventListener('keydown', (e)=>{
+  if(state.activeMode!=='control') return;
+  const tag = document.activeElement.tagName;
+  if(tag==='INPUT' || tag==='TEXTAREA' || tag==='SELECT') return;
+  const k = e.key.toLowerCase();
+  if(k==='s'){ document.getElementById('ctrl-btn-S').click(); }
+  else if(k==='a'){ document.getElementById('ctrl-btn-A').click(); }
+  else if(k==='b'){ document.getElementById('ctrl-btn-B').click(); }
+});
+
+/* ============================================================
+   VERIFY BOX (live table + edit/delete, all 3 modes)
+   ============================================================ */
+const titleMap = { hp:'Hardpoint Log', snd:'Search & Destroy Log', control:'Control Log' };
+
+function renderVerifyBox(){
+  document.getElementById('verify-title').textContent = titleMap[state.activeMode];
+  const target = document.getElementById('verify-scroll');
+  target.innerHTML = '';
+  if(state.activeMode==='hp') target.appendChild(buildHpTable());
+  else if(state.activeMode==='snd') target.appendChild(buildSndTable());
+  else if(state.activeMode==='control') target.appendChild(buildControlTable());
+}
+
+function emptyDiv(msg){
+  const d = document.createElement('div');
+  d.className = 'empty-state';
+  d.textContent = msg;
+  return d;
+}
+
+/* ---- Hardpoint table ---- */
+function buildHpTable(){
+  const computed = hpComputeRows();
+  if(computed.length===0) return emptyDiv('No hills logged yet.');
+  const table = document.createElement('table');
+  table.className = 'vt';
+  table.innerHTML = '<thead><tr>'+
+    ['Hill #','Score Us','Score Opp','Cum Us','Cum Opp','Time Wasted','Held % Us','Notes',''].map(h=>'<th>'+h+'</th>').join('')+
+    '</tr></thead>';
+  const tbody = document.createElement('tbody');
+  computed.forEach((r, i)=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td>'+r.hillNum+'</td>'+
+      '<td data-edit="scoreUs">'+r.scoreUs+'</td>'+
+      '<td data-edit="scoreOpp">'+r.scoreOpp+'</td>'+
+      '<td>'+r.cumUs+'</td>'+
+      '<td>'+r.cumOpp+'</td>'+
+      '<td>'+r.timeWasted+'s</td>'+
+      '<td>'+r.heldPctUs+'%</td>'+
+      '<td data-edit="notes">'+(r.notes||'')+'</td>'+
+      '<td class="row-actions"><button class="icon-btn edit-btn">✎</button><button class="icon-btn danger del-btn">✕</button></td>';
+    tr.querySelector('.edit-btn').addEventListener('click', ()=> editRow(tr, ['scoreUs','scoreOpp','notes'], (vals)=>{
+      state.hp.rows[i].scoreUs = Number(vals.scoreUs)||0;
+      state.hp.rows[i].scoreOpp = Number(vals.scoreOpp)||0;
+      state.hp.rows[i].notes = vals.notes;
+      renderHP(); renderVerifyBox(); persist();
+    }));
+    tr.querySelector('.del-btn').addEventListener('click', ()=>{
+      if(!confirm('Delete this hill row?')) return;
+      state.hp.rows.splice(i,1);
+      renderHP(); renderVerifyBox(); persist();
+    });
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  return table;
+}
+
+/* ---- SND table ---- */
+function buildSndTable(){
+  const computed = sndComputeRows();
+  if(computed.length===0) return emptyDiv('No rounds logged yet.');
+  const table = document.createElement('table');
+  table.className = 'vt';
+  table.innerHTML = '<thead><tr>'+
+    ['Rnd','Side','Site','Plant','FB Side','FB Player','Method','OT','Notes','Cum Us','Cum Opp',''].map(h=>'<th>'+h+'</th>').join('')+
+    '</tr></thead>';
+  const tbody = document.createElement('tbody');
+  computed.forEach((r,i)=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td>'+(i+1)+'</td>'+
+      '<td>'+r.side+'</td>'+
+      '<td>'+r.site+'</td>'+
+      '<td>'+r.plant+'</td>'+
+      '<td>'+r.fbSide+'</td>'+
+      '<td>'+r.fbPlayer+'</td>'+
+      '<td>'+r.methodLabel+'</td>'+
+      '<td>'+r.ot+'</td>'+
+      '<td>'+(r.notes||'')+'</td>'+
+      '<td>'+r.cumUs+'</td>'+
+      '<td>'+r.cumOpp+'</td>'+
+      '<td class="row-actions"><button class="icon-btn danger del-btn">✕</button></td>';
+    tr.querySelector('.del-btn').addEventListener('click', ()=>{
+      if(!confirm('Delete this round row?')) return;
+      state.snd.rows.splice(i,1);
+      renderSnd(); renderVerifyBox(); persist();
+    });
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  return table;
+}
+
+/* ---- Control table (round summary, expandable to taps) ---- */
+function buildControlTable(){
+  if(state.control.rounds.length===0) return emptyDiv('No rounds saved yet.');
+  const table = document.createElement('table');
+  table.className = 'vt';
+  table.innerHTML = '<thead><tr>'+
+    ['','Rnd','Side','Result','Total A','Total B','Streaks A/B','Lives Us/Opp','Notes',''].map(h=>'<th>'+h+'</th>').join('')+
+    '</tr></thead>';
+  const tbody = document.createElement('tbody');
+  state.control.rounds.forEach((round, i)=>{
+    const comp = controlComputeRound(round.events);
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td class="expand-row">▸</td>'+
+      '<td>'+round.roundNum+'</td>'+
+      '<td>'+round.sideUs+'</td>'+
+      '<td>'+round.result+'</td>'+
+      '<td>'+Math.round(comp.totalA)+'s</td>'+
+      '<td>'+Math.round(comp.totalB)+'s</td>'+
+      '<td>'+comp.aCount+'/'+comp.bCount+'</td>'+
+      '<td>'+(round.livesUs||'-')+'/'+(round.livesOpp||'-')+'</td>'+
+      '<td>'+(round.notes||'')+'</td>'+
+      '<td class="row-actions"><button class="icon-btn danger del-btn">✕</button></td>';
+    tr.querySelector('.del-btn').addEventListener('click', (e)=>{
+      e.stopPropagation();
+      if(!confirm('Delete round '+round.roundNum+'?')) return;
+      state.control.rounds.splice(i,1);
+      renderVerifyBox(); persist();
+    });
+    tbody.appendChild(tr);
+
+    const subTr = document.createElement('tr');
+    subTr.style.display = 'none';
+    const subTd = document.createElement('td');
+    subTd.colSpan = 10;
+    subTd.className = 'sub-events';
+    subTd.appendChild(buildControlEventSubtable(round, i));
+    subTr.appendChild(subTd);
+    tbody.appendChild(subTr);
+
+    tr.querySelector('.expand-row').addEventListener('click', ()=>{
+      const open = subTr.style.display !== 'none';
+      subTr.style.display = open ? 'none' : 'table-row';
+      tr.querySelector('.expand-row').textContent = open ? '▸' : '▾';
+    });
+  });
+  table.appendChild(tbody);
+  return table;
+}
+
+function buildControlEventSubtable(round, roundIdx){
+  const comp = controlComputeRound(round.events);
+  const table = document.createElement('table');
+  table.className = 'vt-sub';
+  table.innerHTML = '<thead><tr><th>Type</th><th>Site</th><th>Streak</th><th>Time</th><th>Duration</th><th></th></tr></thead>';
+  const tbody = document.createElement('tbody');
+
+  round.events.forEach((ev, evIdx)=>{
+    const tr = document.createElement('tr');
+    let streakLabel = '-', durLabel = '-';
+    if(ev.kind==='tap'){
+      const match = comp.taps.find((t,ti)=> t.t===ev.t && t.site===ev.site && !t.allout && computeStreakIdx(round.events, evIdx)===t.streakNum);
+      streakLabel = computeStreakIdx(round.events, evIdx);
+      durLabel = match && match.duration!==null ? Math.round(match.duration)+'s' : '-';
+    }
+    tr.innerHTML =
+      '<td>'+(ev.kind==='S'?'Round Start':ev.kind==='allout'?'All Out':'Streak')+'</td>'+
+      '<td>'+(ev.site||'-')+'</td>'+
+      '<td>'+streakLabel+'</td>'+
+      '<td data-edit="t">'+fmtTime(ev.t)+'</td>'+
+      '<td>'+durLabel+'</td>'+
+      '<td class="row-actions"><button class="icon-btn edit-btn">✎</button><button class="icon-btn danger del-btn">✕</button></td>';
+    tr.querySelector('.edit-btn').addEventListener('click', ()=>{
+      const cell = tr.querySelector('[data-edit="t"]');
+      const cur = fmtTime(ev.t);
+      cell.innerHTML = '<input type="text" value="'+cur+'" placeholder="m:ss">';
+      const input = cell.querySelector('input');
+      input.focus();
+      const commit = ()=>{
+        const parts = input.value.split(':');
+        let secs = ev.t;
+        if(parts.length===2){
+          secs = (parseInt(parts[0],10)||0)*60 + (parseInt(parts[1],10)||0);
+        }
+        round.events[evIdx].t = secs;
+        renderVerifyBox(); persist();
+      };
+      input.addEventListener('blur', commit);
+      input.addEventListener('keydown', e=>{ if(e.key==='Enter') input.blur(); });
+    });
+    tr.querySelector('.del-btn').addEventListener('click', ()=>{
+      if(!confirm('Delete this event?')) return;
+      round.events.splice(evIdx,1);
+      renderVerifyBox(); persist();
+    });
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  return table;
+}
+function computeStreakIdx(events, idx){
+  let aCount=0,bCount=0;
+  for(let i=0;i<=idx;i++){
+    const ev = events[i];
+    if(ev.kind==='S'){ aCount=0; bCount=0; }
+    else if(ev.kind==='tap'){ if(ev.site==='A') aCount++; else bCount++; }
+  }
+  return events[idx].site==='A' ? aCount : bCount;
+}
+
+/* generic inline edit helper used by Hardpoint table */
+function editRow(tr, fields, onCommit){
+  const originals = {};
+  fields.forEach(f=>{
+    const cell = tr.querySelector('[data-edit="'+f+'"]');
+    originals[f] = cell.textContent;
+    cell.innerHTML = '<input type="text" value="'+cell.textContent.replace(/"/g,'&quot;')+'">';
+  });
+  const inputs = fields.map(f=>tr.querySelector('[data-edit="'+f+'"] input'));
+  function commit(){
+    const vals = {};
+    fields.forEach((f,i)=> vals[f]=inputs[i].value);
+    onCommit(vals);
+  }
+  let committed = false;
+  inputs.forEach(inp=>{
+    inp.addEventListener('keydown', e=>{ if(e.key==='Enter'){ committed=true; commit(); } });
+    inp.addEventListener('blur', ()=>{ if(!committed){ committed=true; commit(); } });
+  });
+  inputs[0].focus();
+}
+
+/* ============================================================
+   CSV EXPORT
+   ============================================================ */
+function exportHp(){
+  const computed = hpComputeRows();
+  const headers = ['Match ID','Hill #','Cum. Score Opp','Cum. Score Us','Hill Score Opp','Hill Score Us','Time Wasted (s)','Held % Us','Notes','Team'];
+  const rows = computed.map(r=>[state.matchId, r.hillNum, r.cumOpp, r.cumUs, r.scoreOpp, r.scoreUs, r.timeWasted, r.heldPctUs, r.notes||'', state.team]);
+  downloadCsv((state.matchId||'match')+'_Hardpoint.csv', rowsToCsv(headers, rows));
+}
+function exportSnd(){
+  const computed = sndComputeRows();
+  const headers = ['Match ID','Round #','Side Us','Site','Plant?','First Blood Side','First Blood Player','Result/Method','OT Round?','Notes','Cum. Rounds Us','Cum. Rounds Opp','Team'];
+  const rows = computed.map((r,i)=>[state.matchId, i+1, r.side, r.site, r.plant, r.fbSide, r.fbPlayer, r.methodLabel, r.ot, r.notes||'', r.cumUs, r.cumOpp, state.team]);
+  downloadCsv((state.matchId||'match')+'_SND.csv', rowsToCsv(headers, rows));
+}
+function exportControlRounds(){
+  const headers = ['Match ID','Round #','Side Us','Result','Total Capture Time A (s)','Total Capture Time B (s)','Streak Count A','Streak Count B','Final Lives Us','Final Lives Opp','Notes','Team'];
+  const rows = state.control.rounds.map(round=>{
+    const comp = controlComputeRound(round.events);
+    return [state.matchId, round.roundNum, round.sideUs, round.result, Math.round(comp.totalA), Math.round(comp.totalB), comp.aCount, comp.bCount, round.livesUs, round.livesOpp, round.notes||'', state.team];
+  });
+  downloadCsv((state.matchId||'match')+'_Control_Rounds.csv', rowsToCsv(headers, rows));
+}
+function exportControlEvents(){
+  const headers = ['Match ID','Round #','Event Type','Site','Streak #','Timestamp','Duration (s)'];
+  const rows = [];
+  state.control.rounds.forEach(round=>{
+    const comp = controlComputeRound(round.events);
+    round.events.forEach((ev, evIdx)=>{
+      let streak='-', dur='';
+      if(ev.kind==='tap'){
+        streak = computeStreakIdx(round.events, evIdx);
+        const match = comp.taps.find(t=>t.site===ev.site && t.streakNum===streak && t.t===ev.t);
+        dur = match && match.duration!==null ? Math.round(match.duration) : '';
+      }
+      rows.push([state.matchId, round.roundNum, ev.kind==='S'?'Round Start':ev.kind==='allout'?'All Out':'Streak', ev.site||'', streak, fmtTime(ev.t), dur]);
+    });
+  });
+  downloadCsv((state.matchId||'match')+'_Control_Events.csv', rowsToCsv(headers, rows));
+}
+
+document.getElementById('export-current-btn').addEventListener('click', ()=>{
+  if(state.activeMode==='hp') exportHp();
+  else if(state.activeMode==='snd') exportSnd();
+  else { exportControlRounds(); exportControlEvents(); }
+  showToast('CSV exported');
+});
+document.getElementById('export-all-btn').addEventListener('click', ()=>{
+  exportHp(); exportSnd(); exportControlRounds(); exportControlEvents();
+  showToast('All CSVs exported');
+});
+
+/* ============================================================
+   INIT
+   ============================================================ */
+function renderAll(){
+  initTopbar();
+  populateSndPlayerDropdown();
+  renderHP();
+  renderSnd();
+  renderControlHeaderReadouts();
+  renderControlBars();
+  renderControlMiniLog();
+  renderVerifyBox();
+  checkWarn();
+}
+renderAll();
+
+// Detect file:// origin and show setup banner
+if(location.protocol === 'file:'){
+  document.getElementById('file-origin-banner').classList.add('show');
+}
+
+if(state.hp.rows.length || state.snd.rows.length || state.control.rounds.length){
+  showToast('Restored previous session from this browser');
+}
+
+})();
+</script>
+</body>
+</html>

@@ -62,9 +62,11 @@ document.querySelectorAll('.roster-input').forEach(inp => {
     persist();
   });
 });
-
 document.getElementById('roster-toggle').addEventListener('click', () => {
-  document.getElementById('roster-panel').classList.toggle('open');
+  const panel = document.getElementById('roster-panel');
+  panel.classList.toggle('open');
+  const isOpen = panel.classList.contains('open');
+  document.getElementById('roster-toggle').textContent = isOpen ? 'Roster ▴' : 'Roster ▾';
 });
 
 document.getElementById('new-match-btn').addEventListener('click', () => {

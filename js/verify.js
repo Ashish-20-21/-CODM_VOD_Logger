@@ -39,11 +39,15 @@ function buildHpTable(){
   if (computed.length === 0) return emptyDiv('No hills logged yet.');
   const table = document.createElement('table');
   table.className = 'vt';
-  table.innerHTML = '<thead><tr>' + ['Hill #', 'Score Us', 'Score Opp', 'Cum Us', 'Cum Opp', 'Time Wasted', 'Held % Us', 'Notes', ''].map(h => '<th>' + h + '</th>').join('') + '</tr></thead>';
+  // "Cum Score" is the editable field — it's exactly what the coach reads off
+  // the HUD (Hardpoint score is cumulative all match, never resets per hill).
+  // "Hill Gain" is derived (this hill's cum minus the previous hill's cum) and
+  // is read-only — editing the cumulative reading is the only correct input.
+  table.innerHTML = '<thead><tr>' + ['Hill #', 'Cum Score Us', 'Cum Score Opp', 'Hill Gain Us', 'Hill Gain Opp', 'Time Wasted', 'Held % Us', 'Notes', ''].map(h => '<th>' + h + '</th>').join('') + '</tr></thead>';
   const tbody = document.createElement('tbody');
   computed.forEach((r, i) => {
     const tr = document.createElement('tr');
-    tr.innerHTML = '<td>' + r.hillNum + '</td>' + '<td data-edit="scoreUs">' + r.scoreUs + '</td>' + '<td data-edit="scoreOpp">' + r.scoreOpp + '</td>' + '<td>' + r.cumUs + '</td>' + '<td>' + r.cumOpp + '</td>' + '<td>' + r.timeWasted + 's</td>' + '<td>' + r.heldPctUs + '%</td>' + '<td data-edit="notes">' + (r.notes || '') + '</td>' + '<td class="row-actions"><button class="icon-btn edit-btn">✎</button><button class="icon-btn danger del-btn">✕</button></td>';
+    tr.innerHTML = '<td>' + r.hillNum + (r.isMatchEnd ? ' 🏁' : '') + '</td>' + '<td data-edit="scoreUs">' + r.cumUs + '</td>' + '<td data-edit="scoreOpp">' + r.cumOpp + '</td>' + '<td>' + r.perHillUs + '</td>' + '<td>' + r.perHillOpp + '</td>' + '<td>' + r.timeWasted + 's</td>' + '<td>' + r.heldPctUs + '%</td>' + '<td data-edit="notes">' + (r.notes || '') + '</td>' + '<td class="row-actions"><button class="icon-btn edit-btn">✎</button><button class="icon-btn danger del-btn">✕</button></td>';
     tr.querySelector('.edit-btn').addEventListener('click', () => editRow(tr, ['scoreUs', 'scoreOpp', 'notes'], (vals) => {
       getState().hp.rows[i].scoreUs = Number(vals.scoreUs) || 0;
       getState().hp.rows[i].scoreOpp = Number(vals.scoreOpp) || 0;

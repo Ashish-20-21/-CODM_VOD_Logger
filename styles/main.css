@@ -136,3 +136,10 @@ table.vt-sub td{padding:3px 6px;border-bottom:1px solid var(--border-soft);}
 ::-webkit-scrollbar-thumb:hover{background:var(--text-faint);} 
 .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--panel-2);border:1px solid var(--green);color:var(--green);padding:8px 18px;border-radius:6px;font-size:13px;font-weight:600;opacity:0;transition:opacity .2s, transform .2s;pointer-events:none;z-index:100;} 
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:1000;}
+.modal-box{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:24px 28px;max-width:360px;text-align:center;box-shadow:0 8px 30px rgba(0,0,0,0.6);}
+.modal-box h3{margin:0 0 10px;color:var(--text);}
+.modal-box p{margin:0 0 10px;color:var(--text-dim);font-size:14px;}
+.modal-sub{font-size:12px !important;color:var(--text-faint) !important;}
+.modal-box .btn{margin-top:8px;}
